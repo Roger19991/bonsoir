@@ -24,12 +24,15 @@ use Symfony\Component\Validator\Exception\UnexpectedTypeException;
  */
 class FormValidator extends ConstraintValidator
 {
-    private $resolvedGroups;
+    /**
+     * @var \SplObjectStorage<FormInterface, array<int, string|string[]|GroupSequence>>
+     */
+    private \SplObjectStorage $resolvedGroups;
 
     /**
-     * {@inheritdoc}
+     * @return void
      */
-    public function validate($form, Constraint $formConstraint)
+    public function validate(mixed $form, Constraint $formConstraint)
     {
         if (!$formConstraint instanceof Form) {
             throw new UnexpectedTypeException($formConstraint, Form::class);
@@ -84,14 +87,15 @@ class FormValidator extends ConstraintValidator
 
                     foreach ($form->all() as $field) {
                         if ($field->isSubmitted()) {
-                            // remember to validate this field is one group only
+                            // remember to validate this field in one group only
                             // otherwise resolving the groups would reuse the same
                             // sequence recursively, thus some fields could fail
                             // in different steps without breaking early enough
                             $this->resolvedGroups[$field] = (array) $group;
                             $fieldFormConstraint = new Form();
+                            $fieldFormConstraint->groups = $group;
                             $this->context->setNode($this->context->getValue(), $field, $this->context->getMetadata(), $this->context->getPropertyPath());
-                            $validator->atPath(sprintf('children[%s]', $field->getName()))->validate($field, $fieldFormConstraint);
+                            $validator->atPath(sprintf('children[%s]', $field->getName()))->validate($field, $fieldFormConstraint, $group);
                         }
                     }
 
@@ -109,7 +113,9 @@ class FormValidator extends ConstraintValidator
                 foreach ($constraints as $constraint) {
                     // For the "Valid" constraint, validate the data in all groups
                     if ($constraint instanceof Valid) {
-                        $validator->atPath('data')->validate($data, $constraint, $groups);
+                        if (\is_object($data) || \is_array($data)) {
+                            $validator->atPath('data')->validate($data, $constraint, $groups);
+                        }
 
                         continue;
                     }
@@ -135,9 +141,8 @@ class FormValidator extends ConstraintValidator
                 foreach ($form->all() as $field) {
                     if ($field->isSubmitted()) {
                         $this->resolvedGroups[$field] = $groups;
-                        $fieldFormConstraint = new Form();
                         $this->context->setNode($this->context->getValue(), $field, $this->context->getMetadata(), $this->context->getPropertyPath());
-                        $validator->atPath(sprintf('children[%s]', $field->getName()))->validate($field, $fieldFormConstraint);
+                        $validator->atPath(sprintf('children[%s]', $field->getName()))->validate($field, $formConstraint);
                     }
                 }
             }
@@ -153,10 +158,8 @@ class FormValidator extends ConstraintValidator
             foreach ($form as $child) {
                 if (!$child->isSynchronized()) {
                     $childrenSynchronized = false;
-
-                    $fieldFormConstraint = new Form();
                     $this->context->setNode($this->context->getValue(), $child, $this->context->getMetadata(), $this->context->getPropertyPath());
-                    $validator->atPath(sprintf('children[%s]', $child->getName()))->validate($child, $fieldFormConstraint);
+                    $validator->atPath(sprintf('children[%s]', $child->getName()))->validate($child, $formConstraint);
                 }
             }
 
@@ -168,7 +171,7 @@ class FormValidator extends ConstraintValidator
             // child.
             // See also https://github.com/symfony/symfony/issues/4359
             if ($childrenSynchronized) {
-                $clientDataAsString = is_scalar($form->getViewData())
+                $clientDataAsString = \is_scalar($form->getViewData())
                     ? (string) $form->getViewData()
                     : get_debug_type($form->getViewData());
 
@@ -203,9 +206,9 @@ class FormValidator extends ConstraintValidator
     /**
      * Returns the validation groups of the given form.
      *
-     * @return string|GroupSequence|(string|GroupSequence)[] The validation groups
+     * @return string|GroupSequence|array<string|GroupSequence>
      */
-    private function getValidationGroups(FormInterface $form)
+    private function getValidationGroups(FormInterface $form): string|GroupSequence|array
     {
         // Determine the clicked button of the complete form tree
         $clickedButton = null;
@@ -242,11 +245,11 @@ class FormValidator extends ConstraintValidator
     /**
      * Post-processes the validation groups option for a given form.
      *
-     * @param string|GroupSequence|(string|GroupSequence)[]|callable $groups The validation groups
+     * @param string|GroupSequence|array<string|GroupSequence>|callable $groups The validation groups
      *
-     * @return GroupSequence|(string|GroupSequence)[] The validation groups
+     * @return GroupSequence|array<string|GroupSequence>
      */
-    private static function resolveValidationGroups($groups, FormInterface $form)
+    private static function resolveValidationGroups(string|GroupSequence|array|callable $groups, FormInterface $form): GroupSequence|array
     {
         if (!\is_string($groups) && \is_callable($groups)) {
             $groups = $groups($form);
@@ -259,10 +262,18 @@ class FormValidator extends ConstraintValidator
         return (array) $groups;
     }
 
-    private static function getConstraintsInGroups($constraints, $group)
+    private static function getConstraintsInGroups(array $constraints, string|array $group): array
     {
-        return array_filter($constraints, static function (Constraint $constraint) use ($group) {
-            return \in_array($group, $constraint->groups, true);
+        $groups = (array) $group;
+
+        return array_filter($constraints, static function (Constraint $constraint) use ($groups) {
+            foreach ($groups as $group) {
+                if (\in_array($group, $constraint->groups, true)) {
+                    return true;
+                }
+            }
+
+            return false;
         });
     }
 }

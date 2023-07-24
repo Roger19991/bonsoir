@@ -22,36 +22,30 @@ use Twig\TwigFilter;
  */
 final class CodeExtension extends AbstractExtension
 {
-    private $fileLinkFormat;
-    private $charset;
-    private $projectDir;
+    private string|FileLinkFormatter|array|false $fileLinkFormat;
+    private string $charset;
+    private string $projectDir;
 
-    /**
-     * @param string|FileLinkFormatter $fileLinkFormat The format for links to source files
-     */
-    public function __construct($fileLinkFormat, string $projectDir, string $charset)
+    public function __construct(string|FileLinkFormatter $fileLinkFormat, string $projectDir, string $charset)
     {
-        $this->fileLinkFormat = $fileLinkFormat ?: ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format');
+        $this->fileLinkFormat = $fileLinkFormat ?: \ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format');
         $this->projectDir = str_replace('\\', '/', $projectDir).'/';
         $this->charset = $charset;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFilters(): array
     {
         return [
-            new TwigFilter('abbr_class', [$this, 'abbrClass'], ['is_safe' => ['html']]),
-            new TwigFilter('abbr_method', [$this, 'abbrMethod'], ['is_safe' => ['html']]),
-            new TwigFilter('format_args', [$this, 'formatArgs'], ['is_safe' => ['html']]),
-            new TwigFilter('format_args_as_text', [$this, 'formatArgsAsText']),
-            new TwigFilter('file_excerpt', [$this, 'fileExcerpt'], ['is_safe' => ['html']]),
-            new TwigFilter('format_file', [$this, 'formatFile'], ['is_safe' => ['html']]),
-            new TwigFilter('format_file_from_text', [$this, 'formatFileFromText'], ['is_safe' => ['html']]),
-            new TwigFilter('format_log_message', [$this, 'formatLogMessage'], ['is_safe' => ['html']]),
-            new TwigFilter('file_link', [$this, 'getFileLink']),
-            new TwigFilter('file_relative', [$this, 'getFileRelative']),
+            new TwigFilter('abbr_class', $this->abbrClass(...), ['is_safe' => ['html']]),
+            new TwigFilter('abbr_method', $this->abbrMethod(...), ['is_safe' => ['html']]),
+            new TwigFilter('format_args', $this->formatArgs(...), ['is_safe' => ['html']]),
+            new TwigFilter('format_args_as_text', $this->formatArgsAsText(...)),
+            new TwigFilter('file_excerpt', $this->fileExcerpt(...), ['is_safe' => ['html']]),
+            new TwigFilter('format_file', $this->formatFile(...), ['is_safe' => ['html']]),
+            new TwigFilter('format_file_from_text', $this->formatFileFromText(...), ['is_safe' => ['html']]),
+            new TwigFilter('format_log_message', $this->formatLogMessage(...), ['is_safe' => ['html']]),
+            new TwigFilter('file_link', $this->getFileLink(...)),
+            new TwigFilter('file_relative', $this->getFileRelative(...)),
         ];
     }
 
@@ -65,8 +59,8 @@ final class CodeExtension extends AbstractExtension
 
     public function abbrMethod(string $method): string
     {
-        if (false !== strpos($method, '::')) {
-            list($class, $method) = explode('::', $method, 2);
+        if (str_contains($method, '::')) {
+            [$class, $method] = explode('::', $method, 2);
             $result = sprintf('%s::%s()', $this->abbrClass($class), $method);
         } elseif ('Closure' === $method) {
             $result = sprintf('<abbr title="%s">%1$s</abbr>', $method);
@@ -97,7 +91,7 @@ final class CodeExtension extends AbstractExtension
             } elseif ('resource' === $item[0]) {
                 $formattedValue = '<em>resource</em>';
             } else {
-                $formattedValue = str_replace("\n", '', htmlspecialchars(var_export($item[1], true), ENT_COMPAT | ENT_SUBSTITUTE, $this->charset));
+                $formattedValue = str_replace("\n", '', htmlspecialchars(var_export($item[1], true), \ENT_COMPAT | \ENT_SUBSTITUTE, $this->charset));
             }
 
             $result[] = \is_int($key) ? $formattedValue : sprintf("'%s' => %s", $key, $formattedValue);
@@ -126,9 +120,7 @@ final class CodeExtension extends AbstractExtension
             // remove main code/span tags
             $code = preg_replace('#^<code.*?>\s*<span.*?>(.*)</span>\s*</code>#s', '\\1', $code);
             // split multiline spans
-            $code = preg_replace_callback('#<span ([^>]++)>((?:[^<]*+<br \/>)++[^<]*+)</span>#', function ($m) {
-                return "<span $m[1]>".str_replace('<br />', "</span><br /><span $m[1]>", $m[2]).'</span>';
-            }, $code);
+            $code = preg_replace_callback('#<span ([^>]++)>((?:[^<]*+<br \/>)++[^<]*+)</span>#', fn ($m) => "<span $m[1]>".str_replace('<br />', "</span><br /><span $m[1]>", $m[2]).'</span>', $code);
             $content = explode('<br />', $code);
 
             $lines = [];
@@ -137,7 +129,7 @@ final class CodeExtension extends AbstractExtension
             }
 
             for ($i = max($line - $srcContext, 1), $max = min($line + $srcContext, \count($content)); $i <= $max; ++$i) {
-                $lines[] = '<li'.($i == $line ? ' class="selected"' : '').'><a class="anchor" name="line'.$i.'"></a><code>'.self::fixCodeMarkup($content[$i - 1]).'</code></li>';
+                $lines[] = '<li'.($i == $line ? ' class="selected"' : '').'><a class="anchor" id="line'.$i.'"></a><code>'.self::fixCodeMarkup($content[$i - 1]).'</code></li>';
             }
 
             return '<ol start="'.max($line - $srcContext, 1).'">'.implode("\n", $lines).'</ol>';
@@ -166,18 +158,13 @@ final class CodeExtension extends AbstractExtension
         }
 
         if (false !== $link = $this->getFileLink($file, $line)) {
-            return sprintf('<a href="%s" title="Click to open this file" class="file_link">%s</a>', htmlspecialchars($link, ENT_COMPAT | ENT_SUBSTITUTE, $this->charset), $text);
+            return sprintf('<a href="%s" title="Click to open this file" class="file_link">%s</a>', htmlspecialchars($link, \ENT_COMPAT | \ENT_SUBSTITUTE, $this->charset), $text);
         }
 
         return $text;
     }
 
-    /**
-     * Returns the link for a given file/line pair.
-     *
-     * @return string|false A link or false
-     */
-    public function getFileLink(string $file, int $line)
+    public function getFileLink(string $file, int $line): string|false
     {
         if ($fmt = $this->fileLinkFormat) {
             return \is_string($fmt) ? strtr($fmt, ['%f' => $file, '%l' => $line]) : $fmt->format($file, $line);
@@ -190,7 +177,7 @@ final class CodeExtension extends AbstractExtension
     {
         $file = str_replace('\\', '/', $file);
 
-        if (null !== $this->projectDir && 0 === strpos($file, $this->projectDir)) {
+        if (null !== $this->projectDir && str_starts_with($file, $this->projectDir)) {
             return ltrim(substr($file, \strlen($this->projectDir)), '/');
         }
 
@@ -199,9 +186,7 @@ final class CodeExtension extends AbstractExtension
 
     public function formatFileFromText(string $text): string
     {
-        return preg_replace_callback('/in ("|&quot;)?(.+?)\1(?: +(?:on|at))? +line (\d+)/s', function ($match) {
-            return 'in '.$this->formatFile($match[2], $match[3]);
-        }, $text);
+        return preg_replace_callback('/in ("|&quot;)?(.+?)\1(?: +(?:on|at))? +line (\d+)/s', fn ($match) => 'in '.$this->formatFile($match[2], $match[3]), $text);
     }
 
     /**
@@ -209,10 +194,10 @@ final class CodeExtension extends AbstractExtension
      */
     public function formatLogMessage(string $message, array $context): string
     {
-        if ($context && false !== strpos($message, '{')) {
+        if ($context && str_contains($message, '{')) {
             $replacements = [];
             foreach ($context as $key => $val) {
-                if (is_scalar($val)) {
+                if (\is_scalar($val)) {
                     $replacements['{'.$key.'}'] = $val;
                 }
             }
@@ -222,7 +207,7 @@ final class CodeExtension extends AbstractExtension
             }
         }
 
-        return htmlspecialchars($message, ENT_COMPAT | ENT_SUBSTITUTE, $this->charset);
+        return htmlspecialchars($message, \ENT_COMPAT | \ENT_SUBSTITUTE, $this->charset);
     }
 
     protected static function fixCodeMarkup(string $line): string

@@ -1,0 +1,248 @@
+{% extends 'base.html.twig' %}
+
+{% block javascripts %}
+    <script src= "{{ asset('asset/javascript/main.js') }}"></script>
+{% endblock %}
+
+{% block title %}Liste des articles{% endblock %}
+
+{% block body %}
+    <style>
+        .searchbar{
+            margin-bottom: auto;
+            margin-top: auto;
+            height: 60px;
+            background-color: #343a40;
+            border-radius: 30px;
+            padding: 10px;
+        }
+
+        .search_input{
+            color: white;
+            border: 0;
+            outline: 0;
+            background: none;
+            width: 0;
+            caret-color:transparent;
+            line-height: 40px;
+            transition: width 0.4s linear;
+        }
+
+        .searchbar:hover > .search_input{
+            padding: 0 10px;
+            width: 450px;
+            caret-color:red;
+            transition: width 0.4s linear;
+        }
+
+        .searchbar:hover > .search_icon{
+            background: white;
+            color: #e74c3c;
+        }
+
+        .search_icon{
+            height: 40px;
+            width: 35px;
+            float: right;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            color:white;
+            text-decoration:none;
+
+        }
+        .range {
+            display: table;
+            position: relative;
+            height: 25px;
+            margin-top: 20px;
+            background-color: rgb(245, 245, 245);
+            border-radius: 4px;
+            -webkit-box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        .range input[type="range"] {
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            -ms-appearance: none !important;
+            -o-appearance: none !important;
+            appearance: none !important;
+
+            display: table-cell;
+            width: 100%;
+            background-color: transparent;
+            height: 32px;
+            cursor: pointer;
+        }
+        .range input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            -ms-appearance: none !important;
+            -o-appearance: none !important;
+            appearance: none !important;
+
+            width: 11px;
+            height: 25px;
+            color: rgb(255, 255, 255);
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0px;
+            background-color: rgb(153, 153, 153);
+        }
+
+        .range input[type="range"]::-moz-slider-thumb {
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            -ms-appearance: none !important;
+            -o-appearance: none !important;
+            appearance: none !important;
+
+            width: 11px;
+            height: 25px;
+            color: rgb(255, 255, 255);
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0px;
+            background-color: rgb(153, 153, 153);
+        }
+
+        .range output {
+            display: table-cell;
+            padding: 3px 5px 2px;
+            min-width: 50px;
+            color: rgb(255, 255, 255);
+            background-color: rgb(153, 153, 153);
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            border-bottom-left-radius: 0;
+            border-top-left-radius: 0;
+            width: 1%;
+            white-space: nowrap;
+            vertical-align: middle;
+
+            -webkit-transition: all 0.5s ease;
+            -moz-transition: all 0.5s ease;
+            -o-transition: all 0.5s ease;
+            -ms-transition: all 0.5s ease;
+            transition: all 0.5s ease;
+
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: -moz-none;
+            -o-user-select: none;
+            user-select: none;
+        }
+        .range input[type="range"] {
+            outline: none;
+        }
+
+        .range.range-danger input[type="range"]::-webkit-slider-thumb {
+            background-color: rgb(217, 83, 79);
+        }
+        .range.range-danger input[type="range"]::-moz-slider-thumb {
+            background-color: rgb(217, 83, 79);
+        }
+        .range.range-danger output {
+            background-color: rgb(217, 83, 79);
+        }
+        .range.range-danger input[type="range"] {
+            outline-color: rgb(217, 83, 79);
+        }
+
+
+
+    </style>
+    <br>
+        <br>
+
+<div class="container h-100">
+            <div class="d-flex justify-content-center h-100">
+                <div class="searchbar">
+                    <input id="myInput" class="search_input" type="text" name="" placeholder="Entrez une reference, un article...">
+                        <p class="search_icon"><i class="fas fa-search"></i></p>
+                </div>
+            </div>
+
+            <br>
+
+            <center><h1>Liste des articles en stock</h1></center>
+
+            <br>
+
+       <div class="col-xs-6">
+            <div class="range range-danger">
+                <input id="range" type="range" value="100" max="100" min="0" step="1"onchange="rangeDanger.value=value">
+                    <output id="rangeDanger">100</output>&ensp;
+            </div>
+       </div>
+
+            <br>
+
+               <div class="container">
+                    <table id="myTable" class="table">
+                        <thead class="thead-dark" >
+                            <tr>
+                                <th data-field="state" data-checkbox="true">Id</th>
+                                <th>Nom</th>
+                                <th>Prix</th>
+                                <th>Reference</th>
+                                <th>Stock</th>
+                                <th>Option</th>
+                            </tr>
+                        </thead>
+                            <tbody>
+                            {% for article in articles %}
+                                <tr>
+                                    <td>{{ article.id }}</td>
+                                    <td>{{ article.nom }}</td>
+                                    <td class="priceSearch">{{ article.prix }} €</td>
+                                    <td>{{ article.reference }}</td>
+                                    <td>{{ article.quantite }} pc</td>
+                                    <td><a href="{{ path('article_show', {'id': article.id}) }}">
+                                            <svg width="1.5em" height="2em" viewBox="0 0 16 16" class="bi bi-eye-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>
+                                                <path fill-rule="evenodd" d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5">Aucun article</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                    </table>
+
+                    <br>
+
+                    <a href="{{ path('article_new') }}">
+                        <svg width="2em"
+                             height="2.2em"
+                             viewBox="0 0 16 16"
+                             class="bi bi-plus-circle-fill"
+                             fill="#e62d2d"
+                             xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                        </svg>
+                    </a>
+               </div>
+
+            <br>
+
+            <br>
+
+</div>
+
+
+
+{% endblock %}
+
+
+

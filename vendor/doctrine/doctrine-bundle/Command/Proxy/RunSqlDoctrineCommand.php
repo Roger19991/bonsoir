@@ -4,18 +4,18 @@ namespace Doctrine\Bundle\DoctrineBundle\Command\Proxy;
 
 use Doctrine\DBAL\Tools\Console\Command\RunSqlCommand;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+
+use function trigger_deprecation;
 
 /**
  * Execute a SQL query and output the results.
+ *
+ * @deprecated use Doctrine\DBAL\Tools\Console\Command\RunSqlCommand instead
  */
 class RunSqlDoctrineCommand extends RunSqlCommand
 {
-    /**
-     * {@inheritDoc}
-     */
-    protected function configure()
+    protected function configure(): void
     {
         parent::configure();
 
@@ -28,20 +28,16 @@ outputs the results:
 <info>php %command.full_name% "SELECT * FROM users"</info>
 EOT
         );
-
-        if ($this->getDefinition()->hasOption('connection')) {
-            return;
-        }
-
-        $this->addOption('connection', null, InputOption::VALUE_OPTIONAL, 'The connection to use for this command');
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        DoctrineCommandHelper::setApplicationConnection($this->getApplication(), $input->getOption('connection'));
+        trigger_deprecation(
+            'doctrine/doctrine-bundle',
+            '2.2',
+            'The "%s" (doctrine:query:sql) is deprecated, use dbal:run-sql command instead.',
+            self::class
+        );
 
         return parent::execute($input, $output);
     }

@@ -10,20 +10,22 @@ use Doctrine\Persistence\ObjectRepository;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
 
+use function class_exists;
+use function is_a;
+use function spl_object_hash;
+use function sprintf;
+
 /**
  * Fetches repositories from the container or falls back to normal creation.
  */
 final class ContainerRepositoryFactory implements RepositoryFactory
 {
-    /** @var ObjectRepository[] */
-    private $managedRepositories = [];
+    /** @var array<string, ObjectRepository> */
+    private array $managedRepositories = [];
 
-    /** @var ContainerInterface */
-    private $container;
+    private ContainerInterface $container;
 
-    /**
-     * @param ContainerInterface $container A service locator containing the repositories
-     */
+    /** @param ContainerInterface $container A service locator containing the repositories */
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
@@ -31,8 +33,10 @@ final class ContainerRepositoryFactory implements RepositoryFactory
 
     /**
      * {@inheritdoc}
+     *
+     * @template T of object
      */
-    public function getRepository(EntityManagerInterface $entityManager, $entityName) : ObjectRepository
+    public function getRepository(EntityManagerInterface $entityManager, $entityName): ObjectRepository
     {
         $metadata            = $entityManager->getClassMetadata($entityName);
         $repositoryServiceId = $metadata->customRepositoryClassName;
@@ -47,6 +51,7 @@ final class ContainerRepositoryFactory implements RepositoryFactory
                     throw new RuntimeException(sprintf('The service "%s" must implement ObjectRepository (or extend a base class, like ServiceEntityRepository).', $repositoryServiceId));
                 }
 
+                /** @psalm-var ObjectRepository<T> */
                 return $repository;
             }
 
@@ -65,17 +70,26 @@ final class ContainerRepositoryFactory implements RepositoryFactory
         return $this->getOrCreateRepository($entityManager, $metadata);
     }
 
+    /**
+     * @param ClassMetadata<TEntity> $metadata
+     *
+     * @return ObjectRepository<TEntity>
+     *
+     * @template TEntity of object
+     */
     private function getOrCreateRepository(
         EntityManagerInterface $entityManager,
         ClassMetadata $metadata
-    ) : ObjectRepository {
+    ): ObjectRepository {
         $repositoryHash = $metadata->getName() . spl_object_hash($entityManager);
         if (isset($this->managedRepositories[$repositoryHash])) {
+            /** @psalm-var ObjectRepository<TEntity> */
             return $this->managedRepositories[$repositoryHash];
         }
 
         $repositoryClassName = $metadata->customRepositoryClassName ?: $entityManager->getConfiguration()->getDefaultRepositoryClassName();
 
+        /** @psalm-var ObjectRepository<TEntity> */
         return $this->managedRepositories[$repositoryHash] = new $repositoryClassName($entityManager, $metadata);
     }
 }

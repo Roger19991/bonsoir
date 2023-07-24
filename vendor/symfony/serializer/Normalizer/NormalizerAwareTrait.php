@@ -12,8 +12,6 @@
 namespace Symfony\Component\Serializer\Normalizer;
 
 /**
- * NormalizerAware trait.
- *
  * @author Joel Wurtz <joel.wurtz@gmail.com>
  */
 trait NormalizerAwareTrait
@@ -23,6 +21,9 @@ trait NormalizerAwareTrait
      */
     protected $normalizer;
 
+    /**
+     * @return void
+     */
     public function setNormalizer(NormalizerInterface $normalizer)
     {
         $this->normalizer = $normalizer;

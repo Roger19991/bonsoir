@@ -14,7 +14,8 @@
     <br>
     <br>
     <h1>S'inscrire</h1>
-
+        <center>
+        <div class="col-md-6">
         <div class="form-group">{{ form_start(registrationForm) }}</div>
         {{ form_row(registrationForm.login,{'attr':{'class':'form-control'}} )}}
         <br>
@@ -26,4 +27,6 @@
         <button type="submit" class="btn btn-danger">S'inscrire</button>
     {{ form_end(registrationForm) }}
     </div>
+    </div>
+    <center>
 {% endblock %}

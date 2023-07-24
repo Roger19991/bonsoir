@@ -21,7 +21,7 @@ use Symfony\Component\Validator\Exception\UnexpectedValueException;
  */
 class TimeValidator extends ConstraintValidator
 {
-    const PATTERN = '/^(\d{2}):(\d{2}):(\d{2})$/';
+    public const PATTERN = '/^(\d{2}):(\d{2}):(\d{2})$/';
 
     /**
      * Checks whether a time is valid.
@@ -34,9 +34,9 @@ class TimeValidator extends ConstraintValidator
     }
 
     /**
-     * {@inheritdoc}
+     * @return void
      */
-    public function validate($value, Constraint $constraint)
+    public function validate(mixed $value, Constraint $constraint)
     {
         if (!$constraint instanceof Time) {
             throw new UnexpectedTypeException($constraint, Time::class);
@@ -46,7 +46,7 @@ class TimeValidator extends ConstraintValidator
             return;
         }
 
-        if (!is_scalar($value) && !(\is_object($value) && method_exists($value, '__toString'))) {
+        if (!\is_scalar($value) && !$value instanceof \Stringable) {
             throw new UnexpectedValueException($value, 'string');
         }
 
